@@ -1,0 +1,3 @@
+fdd -- the file (socket, pipe, ...) descriptor daemon
+
+Server to create and pass descriptors to processes.
