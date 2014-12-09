@@ -20,23 +20,23 @@
 
 #if defined(DEBUG)
 
-#  define debug(fmt, ...) printf("DEBUG: %s:%s:%d: "fmt, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define debugy(fmt, ...) printf(_YELLOW "DEBUGY: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define debug(fmt, ...)   printf("DEBUG: %s:%s:%d: " fmt, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define debugy(fmt, ...)  printf(_YELLOW "DEBUGY: %s:%s:%d: " fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
-#  define warn(fmt, ...) printf(_YELLOW "WARN: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define info(fmt, ...) printf(_BLUE "INFO: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define success(fmt, ...) printf(_GREEN "SUCCESS: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define error(fmt, ...) fprintf(stderr,   _RED "ERROR: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define warn(fmt, ...)    printf(_YELLOW "WARN: %s:%s:%d: " fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define info(fmt, ...)    printf(_BLUE "INFO: %s:%s:%d: " fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define success(fmt, ...) printf(_GREEN "SUCCESS: %s:%s:%d: " fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define error(fmt, ...)   fprintf(stderr, _RED "ERROR: %s:%s:%d: " fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 #else
 
 #  define debug(fmt, ...)
 #  define debugy(fmt, ...)
 
-#  define warn(fmt, ...) printf(_YELLOW "WARN: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define info(fmt, ...) printf(_BLUE "INFO: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define success(fmt, ...) printf(_GREEN "SUCCESS: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#  define error(fmt, ...) fprintf(stderr,   _RED "ERROR: %s:%s:%d: "fmt _RESET, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#  define warn(fmt, ...)    printf(_YELLOW "WARN: " fmt _RESET, ##__VA_ARGS__)
+#  define info(fmt, ...)    printf(_BLUE "INFO: " fmt _RESET, ##__VA_ARGS__)
+#  define success(fmt, ...) printf(_GREEN "SUCCESS: " fmt _RESET, ##__VA_ARGS__)
+#  define error(fmt, ...)   fprintf(stderr, _RED "ERROR: " fmt _RESET, ##__VA_ARGS__)
 
 #endif /* DEBUG macros */
 
