@@ -1,5 +1,5 @@
-#ifndef FDD_INTERNAL_H
-#define FDD_INTERNAL_H 1
+#ifndef _FDCOMMON_H
+#define _FDCOMMON_H 1
 #include "debug.h"
 
 #include <stdlib.h>
@@ -12,4 +12,4 @@
 
 #define FDD_SOCK_PATH "/var/run/fdd.socket"
 
-#endif /* FDD_INTERNAL_H */
+#endif /* _FDCOMMON_H */
