@@ -50,3 +50,35 @@ int recv_fds(int sock , struct sockaddr_in *srcaddr, socklen_t slen, char *buf, 
     free(cmsgp);
     return (int)errs;
 }
+
+/* Acts like socket(2) */
+int socketfd(int domain, int type, int protocol) {
+    
+    return -1;
+}
+
+/**
+* Create n sockets with a call to socket(domain, type, protocol), storing the
+* sockets starting at fdbuf.
+*
+* Returns: 0 on success or -1 on failure (in which case no sockets are left
+*          open).
+*/
+int socketfds(int domain, int type, int protocol, int *fdbuf, int n) {
+    return -1;
+}
+
+/* Acts like socketpair(2) */
+int socketpairfd(int domain, int type, int protocol, int sv[2]) {
+    return -1;
+}
+
+/* Acts like open(2) */
+int openfd(const char *pathname, int flags) {
+    return -1;
+}
+
+/* Acts like pipe(2) */
+int pipefd(int pipefd[2]) {
+    return -1;
+}
