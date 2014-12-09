@@ -47,7 +47,13 @@ int recv_fds(int sock , struct sockaddr_un *srcaddr, socklen_t slen, char *buf, 
     return (int)errs;
 }
 
-/* Acts like socket(2) */
+/**
+*  Acts like socket(2).
+*  Sends request to the fd daemon to create a socket.
+*  Blocks until recv'ing a response.
+*
+*  Returns: the socket descriptor, same as socket(2)
+*/
 int socketfd(int domain, int type, int protocol) {
     
     return -1;
