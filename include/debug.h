@@ -1,6 +1,8 @@
 #ifndef FDD_DEBUG_H
 #define FDD_DEBUG_H
 
+#include <stdio.h>
+
 #if defined(COLOR)
 #  define _RED     "\x1b[31m"
 #  define _GREEN   "\x1b[32m"
