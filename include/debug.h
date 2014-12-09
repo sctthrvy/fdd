@@ -1,7 +1,7 @@
 #ifndef _DEBUG_H
 #define _DEBUG_H 1
 
-#include <stdio.h>
+#include <stdio.h> /* for printf/fprintf */
 
 #if defined(COLOR)
 #  define _RED     "\x1b[31m"
