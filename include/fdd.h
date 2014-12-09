@@ -1,6 +1,9 @@
 #ifndef FDD_H
 #define FDD_H
 
+#include <sys/types.h>
+#include <sys/socket.h> /* For the PF_*, AF_*, SOCK_*, ... constants */
+
 /* Acts like socket(2) */
 extern int socketfd(int domain, int type, int protocol);
 
