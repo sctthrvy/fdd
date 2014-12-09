@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>     /* for FILENAME_MAX */
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
 
 #include <sys/types.h>  /* for send/recvmsg */
 #include <sys/socket.h> /* for send/recvmsg */
@@ -55,12 +58,13 @@ struct fdreq {
 
 #define IS_OPENREQ(fdreqp)      ((fdreqp)->fdcode & FDCODE_OPEN)
 
+
 /**
 * Response message sent from fdd to libfd.
 * The actual descriptor(s) is(are) received in the cmsghdr's using recvmsg().
 */
 struct fdresp {
-    int errno; /* 0 if success, non-zero if failure */
+    int err; /* A valid errno: 0 if success, non-zero if failure */
 };
 
 #endif /* _FDCOMMON_H */
