@@ -18,7 +18,7 @@ int recv_fds(int sock , struct sockaddr_in *srcaddr, socklen_t slen, char *buf, 
     struct iovec iov;
     struct cmsghdr *cmsgp = malloc(100);
     if(cmsgp == NULL) {
-        _ERROR("%s: %m\n", "malloc()");
+        error("malloc: %m\n");
         return -1;
     }
 
@@ -37,12 +37,12 @@ int recv_fds(int sock , struct sockaddr_in *srcaddr, socklen_t slen, char *buf, 
 
     errs = recvmsg(sock, &msg, 0);
     if(errs < 0) {
-        _ERROR("%s: %m\n", "recvmsg()");
+        error("recvmsg: %m\n");
         free(cmsgp);
         return -1;
     }
     if(msg.msg_controllen < sizeof(struct cmsghdr)) {
-        _ERROR("%s", "Kernel didn't fill in control data, IP_RECVORIGDSTADDR didn't work?\n");
+        error("Kernel didn't fill in control data, IP_RECVORIGDSTADDR didn't work?\n");
         free(cmsgp);
         return -1;
     }
