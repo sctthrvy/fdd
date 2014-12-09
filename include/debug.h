@@ -1,5 +1,5 @@
-#ifndef FDD_DEBUG_H
-#define FDD_DEBUG_H
+#ifndef _DEBUG_H
+#define _DEBUG_H 1
 
 #include <stdio.h>
 
@@ -42,4 +42,4 @@
 
 #endif /* DEBUG macros */
 
-#endif /* FDD_DEBUG_H */
+#endif /* _DEBUG_H */

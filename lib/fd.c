@@ -1,10 +1,6 @@
-#include "fdd.h"
+#include "fd.h"
+#include "fdcommon.h"
 #include "debug.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h> /* recvmsg(2) */
-#include <sys/socket.h> /* recvmsg(2) */
 
 
 /**
@@ -12,7 +8,7 @@
 *
 * TODO: design
 */
-int recv_fds(int sock , struct sockaddr_in *srcaddr, socklen_t slen, char *buf, size_t buflen) {
+int recv_fds(int sock , struct sockaddr_un *srcaddr, socklen_t slen, char *buf, size_t buflen) {
     ssize_t errs;
     struct msghdr msg;
     struct iovec iov;
