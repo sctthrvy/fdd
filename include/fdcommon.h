@@ -13,6 +13,6 @@
 #include <sys/un.h>     /* UNIX sockets */
 
 
-#define FDD_SOCK_PATH "/var/run/fdd.socket"
+#define FDD_SOCK_PATH "/tmp/fdd.socket"
 
 #endif /* _FDCOMMON_H */
