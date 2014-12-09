@@ -1,5 +1,5 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef FDD_DEBUG_H
+#define FDD_DEBUG_H
 
 #if defined(COLOR)
 #  define _RED     "\x1b[31m"
@@ -40,4 +40,4 @@
 
 #endif /* DEBUG macros */
 
-#endif /* DEBUG_H */
+#endif /* FDD_DEBUG_H */
