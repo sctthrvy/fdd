@@ -11,7 +11,9 @@
 * Returns: number of data bytes received, or
 *          -2 on error
 */
-int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf, int datalen, int *fdbuf, int numfds) {
+static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
+        int datalen, int *fdbuf, int numfds) {
+
     ssize_t errs;
     struct msghdr msg;
     struct iovec iov[1];
@@ -19,7 +21,8 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf, int datal
     size_t cmsgspace;
 
     if(datalen <= 0 || numfds <= 0 || !databuf || !fdbuf) {
-        error("datalen: %d <= 0 || numfds: %d <= 0 || !(databuf: %p) || !(fdbuf: %p)",
+        error("datalen=%d <= 0 || numfds=%d <= 0 || !(databuf=%p) ||"
+                "!(fdbuf=%p)",
                         datalen, numfds, databuf, (void*)fdbuf);
         errno = EINVAL;
         return -2;
@@ -33,18 +36,15 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf, int datal
         return -2;
     }
 
-    iov[0].iov_base = databuf;
-    iov[0].iov_len = (size_t)datalen;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = 1;
-
-    msg.msg_name = srcaddr;
-    msg.msg_namelen = (srcaddr) ? sizeof(struct sockaddr_un) : 0;
-
-    msg.msg_control = cmsgp;
-    msg.msg_controllen = cmsgspace;
-
-    msg.msg_flags = 0;
+    iov[0].iov_base     = databuf;
+    iov[0].iov_len      = (size_t)datalen;
+    msg.msg_iov         = iov;
+    msg.msg_iovlen      = 1;
+    msg.msg_name        = srcaddr;
+    msg.msg_namelen     = (srcaddr) ? sizeof(struct sockaddr_un) : 0;
+    msg.msg_control     = cmsgp;
+    msg.msg_controllen  = cmsgspace;
+    msg.msg_flags       = 0;
 
     errs = recvmsg(recvsock, &msg, 0);
     if(errs < 0) {
@@ -52,19 +52,24 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf, int datal
         free(cmsgp);
         return -2;
     }
-    debug("msg recvd: %d bytes, msg_flags: 0x%x, msg_cntllen: %ju\n", (int)errs, msg.msg_flags, (uintmax_t)msg.msg_controllen);
+    debug("msg recvd: %d bytes, msg_flags: 0x%x, msg_cntllen: %ju\n", (int)errs,
+            msg.msg_flags, (uintmax_t)msg.msg_controllen);
     if(msg.msg_controllen < sizeof(struct cmsghdr)) {
-        error("Kernel didn't fill cmsg? msg.controllen: %ju\n", (uintmax_t)msg.msg_controllen);
+        error("Kernel didn't fill cmsg? msg.controllen: %ju\n",
+                (uintmax_t)msg.msg_controllen);
         free(cmsgp);
         return -2;
     }
 
     /* Search through the cmsg's received */
-    for(tmp_cmsgp = CMSG_FIRSTHDR(&msg); tmp_cmsgp != NULL; tmp_cmsgp = CMSG_NXTHDR(&msg, tmp_cmsgp)) {
+    tmp_cmsgp = CMSG_FIRSTHDR(&msg);
+    for(; tmp_cmsgp != NULL; tmp_cmsgp = CMSG_NXTHDR(&msg, tmp_cmsgp)) {
         debug("Processing cmsg: len: %ju, level: %d, type: %d\n",
-             (uintmax_t)tmp_cmsgp->cmsg_len, tmp_cmsgp->cmsg_level, tmp_cmsgp->cmsg_type);
+             (uintmax_t)tmp_cmsgp->cmsg_len, tmp_cmsgp->cmsg_level,
+                tmp_cmsgp->cmsg_type);
         /* If it's the level and type for descriptors */
-        if(tmp_cmsgp->cmsg_level == SOL_SOCKET && tmp_cmsgp->cmsg_type == SCM_RIGHTS) {
+        if(tmp_cmsgp->cmsg_level == SOL_SOCKET &&
+                tmp_cmsgp->cmsg_type == SCM_RIGHTS) {
             /* If it's the right length */
             if(tmp_cmsgp->cmsg_len == CMSG_LEN(numfds * sizeof(int))) {
                 /* Grab the address of the first descriptor */
@@ -117,7 +122,8 @@ int socketfd(int domain, int type, int protocol) {
     req.fdreq_type = type;
     req.fdreq_protocol = protocol;
     /* Send the fd request */
-    n = sendto(fddsock, &req, FDREQ_LEN(&req), 0, (struct sockaddr*)&fddaddr, slen);
+    n = sendto(fddsock, &req, FDREQ_LEN(&req), 0,
+            (struct sockaddr*)&fddaddr, slen);
     if(n < 0) {
         error("sendto: %s\n", strerror(errno));
         goto cleanup;
