@@ -13,4 +13,4 @@ a raw or packet socket, but once a socket is created any process that obtains
 the socket descriptor can use it.
 
 fdd could be run as root, however we recommend that on Linux it rather be run
-with the CAP_NET_RAW capabilities (using setcap(8) and getcap(8)).
+with the CAP_NET_RAW capability (using setcap(8) and getcap(8)).

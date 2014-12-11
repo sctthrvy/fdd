@@ -1,4 +1,3 @@
-#include <ldap.h>
 #include "fd.h"
 #include "fdcommon.h"
 #include "debug.h"
@@ -6,25 +5,29 @@
 
 /**
 * Uses recvmsg(2) to receive descriptors.
+* Data is stored into databuf, the file descriptors are stored into fdbuf.
+* srcaddr can be NULL if you are not interested in the source address.
 *
-* Returns: the number of descriptors received, or
+* Returns: number of data bytes received, or
 *          -2 on error
 */
-int recv_fds(int recvsock, struct sockaddr_un *srcaddr, char *databuf, int datalen, int *fdbuf, int numfds) {
+int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf, int datalen, int *fdbuf, int numfds) {
     ssize_t errs;
     struct msghdr msg;
     struct iovec iov[1];
     struct cmsghdr *cmsgp, *tmp_cmsgp;
-    int fds_recvd = 0;
+    size_t cmsgspace;
 
     if(datalen <= 0 || numfds <= 0 || !databuf || !fdbuf) {
         error("datalen: %d <= 0 || numfds: %d <= 0 || !(databuf: %p) || !(fdbuf: %p)",
-                        datalen, numfds, (void*)databuf, (void*)fdbuf);
+                        datalen, numfds, databuf, (void*)fdbuf);
         errno = EINVAL;
         return -2;
     }
 
-    cmsgp = malloc(CMSG_SPACE(sizeof(int)) * ((size_t)numfds + 1)); /* space for kernel to store cmsghdr{}'s */
+    /* Aligned space for kernel to store cmsghdr{}'s */
+    cmsgspace = CMSG_SPACE(numfds * sizeof(int));
+    cmsgp = malloc(cmsgspace);
     if(cmsgp == NULL) {
         error("malloc: %s\n", strerror(errno));
         return -2;
@@ -36,10 +39,10 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, char *databuf, int datal
     msg.msg_iovlen = 1;
 
     msg.msg_name = srcaddr;
-    msg.msg_namelen = sizeof(struct sockaddr_un);
+    msg.msg_namelen = (srcaddr) ? sizeof(struct sockaddr_un) : 0;
 
     msg.msg_control = cmsgp;
-    msg.msg_controllen = 100;
+    msg.msg_controllen = cmsgspace;
 
     msg.msg_flags = 0;
 
@@ -49,20 +52,29 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, char *databuf, int datal
         free(cmsgp);
         return -2;
     }
-    debug("msg recvd: %d bytes, msg_fls\n", (int)errs)
+    debug("msg recvd: %d bytes, msg_flags: 0x%x, msg_cntllen: %ju\n", (int)errs, msg.msg_flags, (uintmax_t)msg.msg_controllen);
     if(msg.msg_controllen < sizeof(struct cmsghdr)) {
         error("Kernel didn't fill cmsg? msg.controllen: %ju\n", (uintmax_t)msg.msg_controllen);
         free(cmsgp);
         return -2;
     }
 
+    /* Search through the cmsg's received */
     for(tmp_cmsgp = CMSG_FIRSTHDR(&msg); tmp_cmsgp != NULL; tmp_cmsgp = CMSG_NXTHDR(&msg, tmp_cmsgp)) {
-        debug("Processing cmsg: ")
-        if(
-                tmp_cmsgp->cmsg_level == SOL_SOCKET &&
-                tmp_cmsgp->cmsg_type == SCM_RIGHTS) {
-            *(fdbuf + fds_recvd) = *((int *) CMSG_DATA(tmp_cmsgp));
-            fds_recvd++;
+        debug("Processing cmsg: len: %ju, level: %d, type: %d\n",
+             (uintmax_t)tmp_cmsgp->cmsg_len, tmp_cmsgp->cmsg_level, tmp_cmsgp->cmsg_type);
+        /* If it's the level and type for descriptors */
+        if(tmp_cmsgp->cmsg_level == SOL_SOCKET && tmp_cmsgp->cmsg_type == SCM_RIGHTS) {
+            /* If it's the right length */
+            if(tmp_cmsgp->cmsg_len == CMSG_LEN(numfds * sizeof(int))) {
+                /* Grab the address of the first descriptor */
+                int *data = (int *) CMSG_DATA(tmp_cmsgp);
+                int i = 0;
+                /* Store all of the passed descriptors into fdbuf */
+                for(; i < numfds; i++, data++) {
+                    fdbuf[i] = *data;
+                }
+            }
         }
     }
 
@@ -78,17 +90,18 @@ int recv_fds(int recvsock, struct sockaddr_un *srcaddr, char *databuf, int datal
 *  Returns: the socket descriptor, or
 *           -1 if the user's socket() call failed
 *           -2 if socketfd() failed for an internal reason
-*           On either case errno is set appropriately.
+*           In either case errno is set appropriately.
 */
 int socketfd(int domain, int type, int protocol) {
     struct fdreq req;
     int fddsock, usersock = -1;
-    ssize_t n;
+    int n;
     struct sockaddr_un fddaddr = { /* fill out fdd's location */
             .sun_family = AF_LOCAL,
             .sun_path = FDD_SOCK_PATH
     };
     socklen_t slen = SUN_LEN(&fddaddr);
+    struct fdresp resp;
 
     /* Create socket to talk to fdd */
     fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
@@ -97,22 +110,41 @@ int socketfd(int domain, int type, int protocol) {
         return -2;
     }
 
-    /* fill out the request */
+    /* Fill out the request */
     req.fdcode = FDCODE_SOCKET;
     req.numfds = 1;
     req.fdreq_domain = domain;
     req.fdreq_type = type;
     req.fdreq_protocol = protocol;
-
+    /* Send the fd request */
     n = sendto(fddsock, &req, FDREQ_LEN(&req), 0, (struct sockaddr*)&fddaddr, slen);
     if(n < 0) {
         error("sendto: %s\n", strerror(errno));
-        return -2;
+        goto cleanup;
+    }
+    /* Receive the descriptor */
+    /* TODO: verify src from recv_fds */
+    n = recv_fds(fddsock, NULL, &resp, sizeof(resp), &usersock, 1);
+    debug("recv_fds: returned: %d\n", n);
+    if(n < 0) {
+        error("recv_fds failed from from previous errors.\n");
+        goto cleanup;
+    } else if(n != sizeof(resp)) {
+        error("recv_fds didn't receive sizeof(struct fdreq).\n");
+        goto cleanup;
+    }
+    close(fddsock);
+
+    /* Now check fdd's response, non 0 if server's socket call failed */
+    if(resp.errnum != 0) {
+        errno = resp.errnum;
+        return -1;
     }
 
-    /* recvfd() */
-
     return usersock;
+cleanup:
+    close(fddsock);
+    return -2;
 }
 
 /**

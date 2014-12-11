@@ -1,8 +1,6 @@
 #ifndef _FDCOMMON_H
 #define _FDCOMMON_H 1
 
-#include "debug.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>     /* for FILENAME_MAX */
@@ -35,7 +33,7 @@ struct fdreq {
         } openreq;
     } fdreq_un;
 
-/* Correct way to access a fdreq{} if it is for socket (2) */
+/* Correct way to access a fdreq{} if it is for socket(2) */
 #define fdreq_domain            fdreq_un.sockreq.domain
 #define fdreq_type              fdreq_un.sockreq.type
 #define fdreq_protocol          fdreq_un.sockreq.protocol
