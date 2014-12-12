@@ -20,7 +20,6 @@
 /* Request message sent from libfd to fdd */
 struct fdreq {
     int fdcode;
-    int numfds;
     union {
         struct { /* socket(2)/socketpair(2) args */
             int domain;
@@ -58,10 +57,10 @@ struct fdreq {
 #define IS_OPENREQ(fdreqp)      ((fdreqp)->fdcode & FDCODE_OPEN)
 
 #define FDREQ_LEN(fdreqp)       ((fdreqp)->fdcode & FDCODE_SOCKET) ? \
-                                (5 * sizeof(int)) : \
-                                (3 * sizeof(int) + strlen((fdreqp)->fdreq_path))
+                                (4 * sizeof(int)) : \
+                                (2 * sizeof(int) + strlen((fdreqp)->fdreq_path))
 
-#define FDREQ_MIN               (3 * sizeof(int) + 1)
+#define FDREQ_MIN               (sizeof(int))
 
 /**
 * Response message sent from fdd to libfd.
