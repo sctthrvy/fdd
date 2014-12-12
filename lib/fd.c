@@ -5,7 +5,7 @@
 
 /**
 * Creates (and binds) the socket to send a request to the server.
-* Returns: the socket, or -2 on error
+* Returns: the socket, or -1 on error
 */
 static int socket_bind_fdd(char *tmpname) {
     int fddsock, tmpfile, err;
@@ -15,14 +15,14 @@ static int socket_bind_fdd(char *tmpname) {
     fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
     if(fddsock < 0) {
         error("socket: %s\n", strerror(errno));
-        return -2;
+        return -1;
     }
 
     tmpfile = mkstemp(tmpname);
     if(tmpfile < 0) {
         error("mkstemp: %s\n", strerror(errno));
         close(fddsock);
-        return -2;
+        return -1;
     }
     /* We just use mkstemp to get a filename, so close the file. Dumb right? */
     close(tmpfile);
@@ -36,7 +36,7 @@ static int socket_bind_fdd(char *tmpname) {
     if(err < 0) {
         error("bind: %s\n", strerror(errno));
         close(fddsock);
-        return -2;
+        return -1;
     }
 
     return fddsock;
@@ -70,7 +70,7 @@ static int send_req(int fddsock, struct fdreq *fdreqp) {
 * srcaddr can be NULL if you are not interested in the source address.
 *
 * Returns: number of data bytes received, or
-*          -2 on error
+*          -1 on error
 */
 static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
         struct fdresp *resp, int *fdbuf, int numfds) {
@@ -85,7 +85,7 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
         error("numfds=%d <= 0 || !(resp=%p) || !(fdbuf=%p)", numfds,
                 resp, (void*)fdbuf);
         errno = EINVAL;
-        return -2;
+        return -1;
     }
 
     /* Aligned space for kernel to store cmsghdr{}'s */
@@ -93,7 +93,7 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
     cmsgp = malloc(cmsgspace);
     if(cmsgp == NULL) {
         error("malloc: %s\n", strerror(errno));
-        return -2;
+        return -1;
     }
 
     iov[0].iov_base     = resp;
@@ -110,7 +110,7 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
     if(errs < 0) {
         error("recvmsg: %m\n");
         free(cmsgp);
-        return -2;
+        return -1;
     }
     debug("msg recvd: %d bytes, msg_flags: 0x%x, msg_cntllen: %ju\n", (int)errs,
             msg.msg_flags, (uintmax_t)msg.msg_controllen);
@@ -118,7 +118,7 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
         error("Didn't get any cmsgs: msg.controllen=%ju\n",
                 (uintmax_t)msg.msg_controllen);
         free(cmsgp);
-        return -2;
+        return -1;
     }
 
     /* Search through the cmsg's received */
@@ -202,12 +202,10 @@ static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
 *  Blocks until receiving a response.
 *
 *  Returns: the socket descriptor, or
-*           -1 if the user's socket() call failed
-*           -2 if socketfd() failed for an internal reason
-*           In either case errno is set appropriately.
+*           -1 on failure with errno set
 */
 int socketfd(int domain, int type, int protocol) {
-    int err, usersock = -2;
+    int err, usersock = -1;
     struct fdreq req;
 
     /* Fill out the request */

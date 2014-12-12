@@ -12,10 +12,7 @@ void testsocketfd(void) {
 
     sock = socketfd(PF_PACKET, SOCK_DGRAM, 0);
     if(sock < 0) {
-        if(sock == -1)
-            error("socketfd() socket(): %s\n", strerror(errno));
-        else if(sock == -2)
-            error("socketfd(): %s\n", strerror(errno));
+        error("socketfd(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     err = close(sock);
@@ -32,10 +29,7 @@ void testopen(void) {
 
     fd = openfd(filename, O_RDWR);
     if(fd < 0) {
-        if(fd == -1)
-            error("openfd() open(): %s\n", strerror(errno));
-        else if(fd == -2)
-            error("openfd(): %s\n", strerror(errno));
+        error("openfd(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     err = (int) write(fd, "Hello World", sizeof("Hello World"));
