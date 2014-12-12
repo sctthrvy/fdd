@@ -62,6 +62,7 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
     }
 
     /* Search through the cmsg's received */
+    /* In case of no descriptors, the databuf should contain the errnum */
     tmp_cmsgp = CMSG_FIRSTHDR(&msg);
     for(; tmp_cmsgp != NULL; tmp_cmsgp = CMSG_NXTHDR(&msg, tmp_cmsgp)) {
         debug("Processing cmsg: len: %ju, level: %d, type: %d\n",
@@ -88,6 +89,45 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
 }
 
 /**
+* Creates (and binds) the socket to send a request to the server.
+* Returns: the socket, or -2 on error
+*/
+int socket_bind_fdd(char *tmpname) {
+    int fddsock, tmpfile, err;
+    struct sockaddr_un myaddr;
+
+    /* Create socket to talk to fdd */
+    fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    if(fddsock < 0) {
+        error("socket: %s\n", strerror(errno));
+        return -2;
+    }
+
+    tmpfile = mkstemp(tmpname);
+    if(tmpfile < 0) {
+        error("mkstemp: %s\n", strerror(errno));
+        close(fddsock);
+        return -2;
+    }
+    /* We just use mkstemp to get a filename, so close the file. Dumb right? */
+    close(tmpfile);
+    unlink(tmpname);
+    /* Fill out address to bind to */
+    myaddr.sun_family = AF_LOCAL;
+    /* Just in case we make tmpname longer than sun_path, still want '\0' */
+    strncpy(myaddr.sun_path, tmpname, sizeof(myaddr.sun_path) - 1);
+
+    err = bind(fddsock, (struct sockaddr*)&myaddr, sizeof(myaddr));
+    if(err < 0) {
+        error("bind: %s\n", strerror(errno));
+        close(fddsock);
+        return -2;
+    }
+
+    return fddsock;
+}
+
+/**
 *  Acts like socket(2).
 *  Sends request to the fd daemon to create a socket.
 *  Blocks until receiving a response.
@@ -99,19 +139,19 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
 */
 int socketfd(int domain, int type, int protocol) {
     struct fdreq req;
-    int fddsock, usersock = -1;
+    int fddsock, usersock = -2;
     int n;
     struct sockaddr_un fddaddr = { /* fill out fdd's location */
             .sun_family = AF_LOCAL,
             .sun_path = FDD_SOCK_PATH
     };
-    socklen_t slen = SUN_LEN(&fddaddr);
     struct fdresp resp;
+    char tmpname[] = CLI_SOCK_PATH;
 
     /* Create socket to talk to fdd */
-    fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    fddsock = socket_bind_fdd(tmpname);
     if(fddsock < 0) {
-        error("socket: %s\n", strerror(errno));
+        error("socket_bind_fdd: Failed to create request socket.\n");
         return -2;
     }
 
@@ -122,10 +162,11 @@ int socketfd(int domain, int type, int protocol) {
     req.fdreq_type = type;
     req.fdreq_protocol = protocol;
     /* Send the fd request */
-    n = sendto(fddsock, &req, FDREQ_LEN(&req), 0,
-            (struct sockaddr*)&fddaddr, slen);
+    n = (int) sendto(fddsock, &req, FDREQ_LEN(&req), 0,
+            (struct sockaddr*)&fddaddr, sizeof(fddaddr));
     if(n < 0) {
         error("sendto: %s\n", strerror(errno));
+        usersock = -2;
         goto cleanup;
     }
     /* Receive the descriptor */
@@ -137,20 +178,20 @@ int socketfd(int domain, int type, int protocol) {
         goto cleanup;
     } else if(n != sizeof(resp)) {
         error("recv_fds didn't receive sizeof(struct fdreq).\n");
+        usersock = -2;
         goto cleanup;
     }
-    close(fddsock);
 
     /* Now check fdd's response, non 0 if server's socket call failed */
     if(resp.errnum != 0) {
         errno = resp.errnum;
-        return -1;
+        usersock = -1;
     }
 
-    return usersock;
 cleanup:
     close(fddsock);
-    return -2;
+    unlink(tmpname);
+    return usersock;
 }
 
 /**

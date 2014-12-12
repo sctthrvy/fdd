@@ -3,16 +3,20 @@ project(fdd)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -DDEBUG -DCOLOR")
 
-set(FDD_SOURCE_FILES
-    src/fdd.c)
+set(FDD_SRCS src/fdd.c)
 
-set(FD_LIB_SOURCE_FILES
-    lib/fd.c)
+set(FD_LIB_SRCS lib/fd.c)
+
+set(TEST_SRCS src/test.c)
 
 include_directories(${fdd_SOURCE_DIR}/include)
 
 # Create a shared library: libfd
-add_library(fd SHARED ${FD_LIB_SOURCE_FILES})
+add_library(fd SHARED ${FD_LIB_SRCS})
 
 # The fdd[aemon] exe
-add_executable(fdd ${FDD_SOURCE_FILES})
+add_executable(fdd ${FDD_SRCS})
+
+add_executable(test ${TEST_SRCS})
+
+target_link_libraries(test fd)

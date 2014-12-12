@@ -14,7 +14,8 @@
 #include <sys/un.h>     /* for UNIX sockets() */
 
 
-#define FDD_SOCK_PATH "/tmp/fdd.socket"
+#define FDD_SOCK_PATH "/tmp/.fdd.socket"
+#define CLI_SOCK_PATH "/tmp/.fdd.socket.XXXXXX"
 
 /* Request message sent from libfd to fdd */
 struct fdreq {
