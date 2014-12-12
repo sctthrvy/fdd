@@ -70,15 +70,17 @@ static void runfdd(int usock) {
                 return;
             }
         }
+        resp.errnum = 0; /* success */
         for(i = 0; i < req.numfds; ++i) {
             fds[i] = socket(req.fdreq_domain, req.fdreq_type, req.fdreq_protocol);
             if(fds[i] < 0) {
                 /* TODO: close all files, free memory */
-                error("socket failed: %s\n", strerror(errno));
-                return;
+                resp.errnum = errno;
+                req.numfds = 0; /* Kernel won't pass bad fds */
+                warn("failed to create socket: %s\n", strerror(errno));
+                break;
             }
         }
-        resp.errnum = 0; /* success */
         /* Send reply */
         nsent = sendfdresp(usock, &resp, fds, req.numfds, &src);
         if(nsent < 0) {
@@ -197,8 +199,8 @@ static int initusock(void) {
         close(sock);
         exit(EXIT_FAILURE);
     }
-    /* fchmod the file to 766 so any process can use ODR */
-    err = fchmod(sock, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+    /* chmod the file to 766 so any process can use ODR */
+    err = chmod(FDD_SOCK_PATH, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
     if(err) {
         error("chmod failed: %s\n", strerror(errno));
         close(sock);
@@ -209,11 +211,12 @@ static int initusock(void) {
 
 static int validmsg(ssize_t nrecv, struct fdreq *req) {
     int valid = 0;
-    if(nrecv < 0xFDD) {
+    if(nrecv < FDREQ_MIN) {
         /* Message too short */
         debug("Short message: recvmsg returned %lld\n", (long long)nrecv);
     } else {
         /* Could be valid */
+        valid = 1;
     }
     return valid;
 }

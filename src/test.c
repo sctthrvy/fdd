@@ -8,9 +8,9 @@
 #include "fd.h" /* socketfd */
 
 int main(void) {
-    int sock;
+    int sock, err;
 
-    sock = socketfd(AF_INET, SOCK_DGRAM, 0);
+    sock = socketfd(PF_PACKET, SOCK_DGRAM, 0);
     if(sock < 0) {
         if(sock == -1)
             error("socketfd() socket(): %s\n", strerror(errno));
@@ -18,7 +18,11 @@ int main(void) {
             error("socketfd(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+    err = close(sock);
+    if(err) {
+        error("close: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
     success("Created socket with socketfd().\n");
-    close(sock);
     exit(EXIT_SUCCESS);
 }

@@ -11,8 +11,8 @@
 * Returns: number of data bytes received, or
 *          -2 on error
 */
-static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
-        int datalen, int *fdbuf, int numfds) {
+static int recv_fds(int recvsock, struct sockaddr_un *srcaddr,
+        struct fdresp *resp, int *fdbuf, int numfds) {
 
     ssize_t errs;
     struct msghdr msg;
@@ -20,10 +20,9 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
     struct cmsghdr *cmsgp, *tmp_cmsgp;
     size_t cmsgspace;
 
-    if(datalen <= 0 || numfds <= 0 || !databuf || !fdbuf) {
-        error("datalen=%d <= 0 || numfds=%d <= 0 || !(databuf=%p) ||"
-                "!(fdbuf=%p)",
-                        datalen, numfds, databuf, (void*)fdbuf);
+    if(resp <= 0 || numfds <= 0  || !fdbuf) {
+        error("numfds=%d <= 0 || !(resp=%p) || !(fdbuf=%p)", numfds,
+                resp, (void*)fdbuf);
         errno = EINVAL;
         return -2;
     }
@@ -36,8 +35,8 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
         return -2;
     }
 
-    iov[0].iov_base     = databuf;
-    iov[0].iov_len      = (size_t)datalen;
+    iov[0].iov_base     = resp;
+    iov[0].iov_len      = sizeof(struct fdresp);
     msg.msg_iov         = iov;
     msg.msg_iovlen      = 1;
     msg.msg_name        = srcaddr;
@@ -54,8 +53,8 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr, void *databuf,
     }
     debug("msg recvd: %d bytes, msg_flags: 0x%x, msg_cntllen: %ju\n", (int)errs,
             msg.msg_flags, (uintmax_t)msg.msg_controllen);
-    if(msg.msg_controllen < sizeof(struct cmsghdr)) {
-        error("Kernel didn't fill cmsg? msg.controllen: %ju\n",
+    if(resp->errnum == 0 && msg.msg_controllen < sizeof(struct cmsghdr)) {
+        error("Didn't get any cmsgs: msg.controllen=%ju\n",
                 (uintmax_t)msg.msg_controllen);
         free(cmsgp);
         return -2;
@@ -171,8 +170,8 @@ int socketfd(int domain, int type, int protocol) {
     }
     /* Receive the descriptor */
     /* TODO: verify src from recv_fds */
-    n = recv_fds(fddsock, NULL, &resp, sizeof(resp), &usersock, 1);
-    debug("recv_fds: returned: %d\n", n);
+    n = recv_fds(fddsock, NULL, &resp, &usersock, 1);
+    debug("recv_fds: returned: %d data bytes recv'd\n", n);
     if(n < 0) {
         error("recv_fds failed from from previous errors.\n");
         goto cleanup;

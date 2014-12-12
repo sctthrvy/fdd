@@ -61,6 +61,8 @@ struct fdreq {
                                 (5 * sizeof(int)) : \
                                 (3 * sizeof(int) + strlen((fdreqp)->fdreq_path))
 
+#define FDREQ_MIN               (3 * sizeof(int) + 1)
+
 /**
 * Response message sent from fdd to libfd.
 * The actual descriptor(s) is(are) received in the cmsghdr's using recvmsg().
