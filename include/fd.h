@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h> /* For the PF_*, AF_*, SOCK_*, ... constants */
+#include <fcntl.h> /* For the O_* constants */
 
 /**
 *  Acts like socket(2).

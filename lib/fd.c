@@ -150,7 +150,7 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
 
 
 static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
-    int fddsock, rtnval = -2;
+    int fddsock, rtnval = -1;
     int n, set_errno = 0;
     struct fdresp resp;
     char tmpname[] = CLI_SOCK_PATH;
@@ -159,14 +159,13 @@ static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
     fddsock = socket_bind_fdd(tmpname);
     if(fddsock < 0) {
         error("socket_bind_fdd: Failed to create request socket.\n");
-        return -2;
+        return -1;
     }
 
     /* Send the fd request to the server */
     n = send_req(fddsock, fdreqp);
     if(n < 0) {
         error("send_req: failed\n");
-        rtnval = -2;
         goto cleanup;
     }
     /* Receive the descriptor */
@@ -175,11 +174,9 @@ static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
     debug("recv_resp: returned: %d data bytes recv'd\n", n);
     if(n < 0) {
         error("recv_resp failed from from previous errors.\n");
-        rtnval = -2;
         goto cleanup;
     } else if(n != sizeof(resp)) {
         error("recv_resp didn't receive sizeof(struct fdreq).\n");
-        rtnval = -2;
         goto cleanup;
     }
 
@@ -187,6 +184,8 @@ static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
     if(resp.errnum != 0) {
         set_errno = 1;
         rtnval = -1;
+    } else {
+        rtnval = 0;
     }
 
     cleanup:
