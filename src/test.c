@@ -7,7 +7,7 @@
 
 #include "fd.h" /* socketfd */
 
-int main(void) {
+void testsocketfd(void) {
     int sock, err;
 
     sock = socketfd(PF_PACKET, SOCK_DGRAM, 0);
@@ -25,4 +25,11 @@ int main(void) {
     }
     success("Created socket with socketfd().\n");
     exit(EXIT_SUCCESS);
+}
+
+int main(void) {
+
+    testsocketfd();
+
+    return 0;
 }

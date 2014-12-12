@@ -4,6 +4,67 @@
 
 
 /**
+* Creates (and binds) the socket to send a request to the server.
+* Returns: the socket, or -2 on error
+*/
+static int socket_bind_fdd(char *tmpname) {
+    int fddsock, tmpfile, err;
+    struct sockaddr_un myaddr;
+
+    /* Create socket to talk to fdd */
+    fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    if(fddsock < 0) {
+        error("socket: %s\n", strerror(errno));
+        return -2;
+    }
+
+    tmpfile = mkstemp(tmpname);
+    if(tmpfile < 0) {
+        error("mkstemp: %s\n", strerror(errno));
+        close(fddsock);
+        return -2;
+    }
+    /* We just use mkstemp to get a filename, so close the file. Dumb right? */
+    close(tmpfile);
+    unlink(tmpname);
+    /* Fill out address to bind to */
+    myaddr.sun_family = AF_LOCAL;
+    /* Just in case we make tmpname longer than sun_path, still want '\0' */
+    strncpy(myaddr.sun_path, tmpname, sizeof(myaddr.sun_path) - 1);
+
+    err = bind(fddsock, (struct sockaddr*)&myaddr, sizeof(myaddr));
+    if(err < 0) {
+        error("bind: %s\n", strerror(errno));
+        close(fddsock);
+        return -2;
+    }
+
+    return fddsock;
+}
+
+/**
+* Uses sendto(2) to send the fdreq.
+* @fddsock -- socket to send on
+* @fdreqp -- request to send
+*
+* Returns: return value of sendto(2)
+*/
+static int send_req(int fddsock, struct fdreq *fdreqp) {
+    int n;
+    struct sockaddr_un fddaddr = { /* fill out fdd's location */
+            .sun_family = AF_LOCAL,
+            .sun_path = FDD_SOCK_PATH
+    };
+
+    n = (int)sendto(fddsock, fdreqp, FDREQ_LEN(fdreqp), 0,
+            (struct sockaddr*)&fddaddr, sizeof(fddaddr));
+    if(n < 0) {
+        error("sendto: %s\n", strerror(errno));
+    }
+    return n;
+}
+
+/**
 * Uses recvmsg(2) to receive descriptors.
 * Data is stored into databuf, the file descriptors are stored into fdbuf.
 * srcaddr can be NULL if you are not interested in the source address.
@@ -11,7 +72,7 @@
 * Returns: number of data bytes received, or
 *          -2 on error
 */
-static int recv_fds(int recvsock, struct sockaddr_un *srcaddr,
+static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
         struct fdresp *resp, int *fdbuf, int numfds) {
 
     ssize_t errs;
@@ -87,43 +148,53 @@ static int recv_fds(int recvsock, struct sockaddr_un *srcaddr,
     return (int)errs;
 }
 
-/**
-* Creates (and binds) the socket to send a request to the server.
-* Returns: the socket, or -2 on error
-*/
-int socket_bind_fdd(char *tmpname) {
-    int fddsock, tmpfile, err;
-    struct sockaddr_un myaddr;
+
+static int process_fdreq(struct fdreq *fdreqp, int *fdbuf, int numfds) {
+    int fddsock, rtnval = -2;
+    int n, set_errno = 0;
+    struct fdresp resp;
+    char tmpname[] = CLI_SOCK_PATH;
 
     /* Create socket to talk to fdd */
-    fddsock = socket(AF_LOCAL, SOCK_DGRAM, 0);
+    fddsock = socket_bind_fdd(tmpname);
     if(fddsock < 0) {
-        error("socket: %s\n", strerror(errno));
+        error("socket_bind_fdd: Failed to create request socket.\n");
         return -2;
     }
 
-    tmpfile = mkstemp(tmpname);
-    if(tmpfile < 0) {
-        error("mkstemp: %s\n", strerror(errno));
-        close(fddsock);
-        return -2;
+    /* Send the fd request to the server */
+    n = send_req(fddsock, fdreqp);
+    if(n < 0) {
+        error("send_req: failed\n");
+        rtnval = -2;
+        goto cleanup;
     }
-    /* We just use mkstemp to get a filename, so close the file. Dumb right? */
-    close(tmpfile);
+    /* Receive the descriptor */
+    /* TODO: verify src from recv_resp */
+    n = recv_resp(fddsock, NULL, &resp, fdbuf, numfds);
+    debug("recv_resp: returned: %d data bytes recv'd\n", n);
+    if(n < 0) {
+        error("recv_resp failed from from previous errors.\n");
+        rtnval = -2;
+        goto cleanup;
+    } else if(n != sizeof(resp)) {
+        error("recv_resp didn't receive sizeof(struct fdreq).\n");
+        rtnval = -2;
+        goto cleanup;
+    }
+
+    /* Now check fdd's response, non 0 if server's socket call failed */
+    if(resp.errnum != 0) {
+        set_errno = 1;
+        rtnval = -1;
+    }
+
+    cleanup:
+    close(fddsock);
     unlink(tmpname);
-    /* Fill out address to bind to */
-    myaddr.sun_family = AF_LOCAL;
-    /* Just in case we make tmpname longer than sun_path, still want '\0' */
-    strncpy(myaddr.sun_path, tmpname, sizeof(myaddr.sun_path) - 1);
-
-    err = bind(fddsock, (struct sockaddr*)&myaddr, sizeof(myaddr));
-    if(err < 0) {
-        error("bind: %s\n", strerror(errno));
-        close(fddsock);
-        return -2;
-    }
-
-    return fddsock;
+    if(set_errno)
+        errno = resp.errnum; /* set errno correctly */
+    return rtnval;
 }
 
 /**
@@ -137,84 +208,57 @@ int socket_bind_fdd(char *tmpname) {
 *           In either case errno is set appropriately.
 */
 int socketfd(int domain, int type, int protocol) {
+    int err, usersock = -2;
     struct fdreq req;
-    int fddsock, usersock = -2;
-    int n;
-    struct sockaddr_un fddaddr = { /* fill out fdd's location */
-            .sun_family = AF_LOCAL,
-            .sun_path = FDD_SOCK_PATH
-    };
-    struct fdresp resp;
-    char tmpname[] = CLI_SOCK_PATH;
-
-    /* Create socket to talk to fdd */
-    fddsock = socket_bind_fdd(tmpname);
-    if(fddsock < 0) {
-        error("socket_bind_fdd: Failed to create request socket.\n");
-        return -2;
-    }
 
     /* Fill out the request */
     req.fdcode = FDCODE_SOCKET;
-    req.numfds = 1;
     req.fdreq_domain = domain;
     req.fdreq_type = type;
     req.fdreq_protocol = protocol;
-    /* Send the fd request */
-    n = (int) sendto(fddsock, &req, FDREQ_LEN(&req), 0,
-            (struct sockaddr*)&fddaddr, sizeof(fddaddr));
-    if(n < 0) {
-        error("sendto: %s\n", strerror(errno));
-        usersock = -2;
-        goto cleanup;
-    }
-    /* Receive the descriptor */
-    /* TODO: verify src from recv_fds */
-    n = recv_fds(fddsock, NULL, &resp, &usersock, 1);
-    debug("recv_fds: returned: %d data bytes recv'd\n", n);
-    if(n < 0) {
-        error("recv_fds failed from from previous errors.\n");
-        goto cleanup;
-    } else if(n != sizeof(resp)) {
-        error("recv_fds didn't receive sizeof(struct fdreq).\n");
-        usersock = -2;
-        goto cleanup;
-    }
 
-    /* Now check fdd's response, non 0 if server's socket call failed */
-    if(resp.errnum != 0) {
-        errno = resp.errnum;
-        usersock = -1;
-    }
-
-cleanup:
-    close(fddsock);
-    unlink(tmpname);
+    err = process_fdreq(&req, &usersock, 1);
+    if(err)
+        return err;
     return usersock;
 }
 
-/**
-* Create n sockets with a call to socket(domain, type, protocol), storing the
-* sockets starting at fdbuf.
-*
-* Returns: 0 on success or -1 on failure (in which case no sockets are left
-*          open).
-*/
-int socketfds(int domain, int type, int protocol, int *fdbuf, int n) {
-    return -1;
-}
 
 /* Acts like socketpair(2) */
 int socketpairfd(int domain, int type, int protocol, int sv[2]) {
-    return -1;
+    struct fdreq req;
+
+    /* Fill out the request */
+    req.fdcode = FDCODE_SOCKETPAIR;
+    req.fdreq_domain = domain;
+    req.fdreq_type = type;
+    req.fdreq_protocol = protocol;
+
+    return process_fdreq(&req, sv, 2);
 }
 
 /* Acts like open(2) */
 int openfd(const char *pathname, int flags) {
-    return -1;
+    int err, usersock;
+    struct fdreq req;
+
+    /* Fill out the request */
+    req.fdcode = FDCODE_OPEN;
+    req.fdreq_flags = flags;
+    strncpy(req.fdreq_path, pathname, sizeof(req.fdreq_path));
+
+    err = process_fdreq(&req, &usersock, 1);
+    if(err)
+        return err;
+    return usersock;
 }
 
 /* Acts like pipe(2) */
 int pipefd(int pipefd[2]) {
-    return -1;
+    struct fdreq req;
+
+    /* Fill out the request */
+    req.fdcode = FDCODE_PIPE;
+
+    return process_fdreq(&req, pipefd, 2);
 }
