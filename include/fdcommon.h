@@ -28,7 +28,8 @@ struct fdreq {
         } sockreq;
 
         struct {
-            int flags; /* flags for open(2) */
+            int flags;   /* flags for open(2) */
+            mode_t mode; /* mode for O_CREAT */
             char path[FILENAME_MAX];
         } openreq;
     } fdreq_un;
@@ -40,6 +41,7 @@ struct fdreq {
 
 /* Correct way to access a fdreq{} if it is for open(2) */
 #define fdreq_flags             fdreq_un.openreq.flags
+#define fdreq_mode              fdreq_un.openreq.mode
 #define fdreq_path              fdreq_un.openreq.path
 };
 
