@@ -21,7 +21,7 @@ extern int socketfd(int domain, int type, int protocol);
 extern int socketpairfd(int domain, int type, int protocol, int sv[2]);
 
 /* Acts like open(2) */
-extern int openfd(const char *pathname, int flags);
+extern int openfd(const char *pathname, int flags, ...);
 
 /* Acts like pipe(2) */
 extern int pipefd(int pipefd[2]);

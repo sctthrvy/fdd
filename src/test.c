@@ -27,7 +27,7 @@ void testopen(void) {
     char *filename = "/tmp/test_openfd";
     int fd, err;
 
-    fd = openfd(filename, O_RDWR);
+    fd = openfd(filename, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if(fd < 0) {
         error("openfd(): %s\n", strerror(errno));
         exit(EXIT_FAILURE);

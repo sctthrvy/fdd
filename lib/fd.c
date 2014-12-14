@@ -1,6 +1,7 @@
 #include "fd.h"
 #include "fdcommon.h"
 #include "debug.h"
+#include <stdarg.h>
 
 
 /**
@@ -235,14 +236,20 @@ int socketpairfd(int domain, int type, int protocol, int sv[2]) {
 }
 
 /* Acts like open(2) */
-int openfd(const char *pathname, int flags) {
+int openfd(const char *pathname, int flags, ...) {
     int err, usersock;
     struct fdreq req;
+    va_list ap;
+
+    va_start(ap, flags);
 
     /* Fill out the request */
     req.fdcode = FDCODE_OPEN;
     req.fdreq_flags = flags;
+    /* Use 3rd argument if O_CREAT is specified */
+    req.fdreq_mode = flags & O_CREAT? va_arg(ap, mode_t) : 0;
     strncpy(req.fdreq_path, pathname, sizeof(req.fdreq_path));
+    va_end(ap);
 
     err = process_fdreq(&req, &usersock, 1);
     if(err)

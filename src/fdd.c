@@ -192,6 +192,7 @@ int handle_fdreq(ssize_t nrecv, struct fdreq *req, int fds[2], int *numfds) {
         case FDCODE_OPEN:
             /* Null terminate the received pathname */
             ((char *)req)[nrecv] = '\0';
+            info("req: open(%s, 0x%X, %o)\n", req->fdreq_path, req->fdreq_flags, req->fdreq_mode);
             fds[0] = open(req->fdreq_path, req->fdreq_flags, req->fdreq_mode);
             if(fds[0] < 0) {
                 err = errno;

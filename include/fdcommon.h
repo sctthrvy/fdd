@@ -58,9 +58,10 @@ struct fdreq {
 /* Is the fdreq for an open() call? */
 #define IS_OPENREQ(fdreqp)      ((fdreqp)->fdcode & FDCODE_OPEN)
 
+/* TODO: This is broken */
 #define FDREQ_LEN(fdreqp)       ((fdreqp)->fdcode & FDCODE_SOCKET) ? \
                                 (4 * sizeof(int)) : \
-                                (2 * sizeof(int) + strlen((fdreqp)->fdreq_path))
+                                (2 * sizeof(int) + sizeof(mode_t) + strlen((fdreqp)->fdreq_path))
 
 #define FDREQ_MIN               (sizeof(int))
 
