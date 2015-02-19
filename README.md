@@ -4,7 +4,7 @@ fdd
 
 A daemon to create and pass descriptors to processes.
 
-The main motivation of fdd is allowing an under privileged processes to obtain
+The main motivation of fdd is allowing under privileged processes to obtain
 raw and packet sockets, however it may also support some other dangerous tasks
 (such as opening arbitrary files).
 
