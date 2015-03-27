@@ -258,7 +258,7 @@ static int initusock(void) {
         exit(EXIT_FAILURE);
     }
     debug("Enabled reception of credentials.\n");
-    /* chmod the file to 766 so any process can use ODR */
+    /* chmod the file to 766 so any process can use fdd */
     err = chmod(FDD_SOCK_PATH, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP |
                 S_IROTH | S_IWOTH);
     if(err) {
