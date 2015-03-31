@@ -17,6 +17,6 @@ add_library(fd SHARED ${FD_LIB_SRCS})
 # The fdd[aemon] exe
 add_executable(fdd ${FDD_SRCS})
 
-add_executable(test ${TEST_SRCS})
+add_executable(testfdd ${TEST_SRCS})
 
-target_link_libraries(test fd)
+target_link_libraries(testfdd fd)

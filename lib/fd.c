@@ -82,9 +82,9 @@ static int recv_resp(int recvsock, struct sockaddr_un *srcaddr,
     struct cmsghdr *cmsgp, *tmp_cmsgp;
     size_t cmsgspace;
 
-    if(resp <= 0 || numfds <= 0  || !fdbuf) {
-        error("numfds=%d <= 0 || !(resp=%p) || !(fdbuf=%p)", numfds,
-                resp, (void*)fdbuf);
+    if(!resp || !fdbuf || numfds <= 0) {
+        error("Invalid arg(s): resp %p, fdbuf %p, or numfds %d",
+                resp, fdbuf, numfds);
         errno = EINVAL;
         return -1;
     }
